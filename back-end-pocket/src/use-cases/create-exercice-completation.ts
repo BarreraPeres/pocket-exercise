@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, gte, lte, sql } from "drizzle-orm"
 import { db } from "../postgresql/connection"
 import { Exercise, ExerciseCompletentions } from "../postgresql/schema"
 import dayjs from "dayjs"
@@ -14,7 +14,8 @@ export async function createExerciseCompletion({
     exerciseId
 }: CreateExerciseCompletionRequest) {
     const currentYear = dayjs().year()
-    const currentWeek = 37
+    const endDayOfWeek = dayjs().endOf("week").toDate()
+    const firstDayOfWeek = dayjs().startOf("week").toDate()
 
     const exerciseCompletionCounts = db.$with('exercise_completion_counts').as(
         db
@@ -29,12 +30,12 @@ export async function createExerciseCompletion({
                 and(
                     eq(ExerciseCompletentions.exerciseId, exerciseId),
                     sql`EXTRACT(YEAR FROM ${ExerciseCompletentions.createdAt}) = ${currentYear}`,
-                    sql`EXTRACT(WEEK FROM ${ExerciseCompletentions.createdAt}) = ${currentWeek}`
+                    gte(ExerciseCompletentions.createdAt, firstDayOfWeek),
+                    lte(ExerciseCompletentions.createdAt, endDayOfWeek)
                 )
             )
             .groupBy(ExerciseCompletentions.exerciseId)
     )
-    console.log("SQL Query Week:", exerciseCompletionCounts);
     const result = await db
         .with(exerciseCompletionCounts)
         .select({

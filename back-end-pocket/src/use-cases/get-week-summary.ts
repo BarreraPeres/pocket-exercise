@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
 import { db } from '../postgresql/connection'
 import { Exercise, ExerciseCompletentions } from '../postgresql/schema'
 
@@ -8,7 +8,9 @@ dayjs.extend(weekOfYear)
 
 export async function getWeekSummary() {
     const currentYear = dayjs().year()
-    const currentWeek = 37
+    const endDayOfWeek = dayjs().endOf("week").toDate()
+    const firstDayOfWeek = dayjs().startOf("week").toDate()
+
     const exercisesCreatedUpToWeek = db.$with('exercises_created_up_to_week').as(
         db
             .select({
@@ -22,7 +24,8 @@ export async function getWeekSummary() {
             .where(
                 and(
                     sql`EXTRACT(YEAR FROM ${Exercise.createdAt}) <= ${currentYear}`,
-                    sql`EXTRACT(WEEK FROM ${Exercise.createdAt}) <= ${currentWeek}`
+                    gte(Exercise.createdAt, firstDayOfWeek),
+                    lte(Exercise.createdAt, endDayOfWeek)
                 )
             )
     )
@@ -44,7 +47,8 @@ export async function getWeekSummary() {
             .where(
                 and(
                     sql`EXTRACT(YEAR FROM ${Exercise.createdAt}) = ${currentYear}`,
-                    sql`EXTRACT(WEEK FROM ${Exercise.createdAt}) = ${currentWeek}`
+                    gte(Exercise.createdAt, firstDayOfWeek),
+                    lte(Exercise.createdAt, endDayOfWeek)
                 )
             )
     )
